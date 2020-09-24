@@ -165,7 +165,7 @@ disqusShortname = ""
     # - send a dummy email yourself to confirm your account
     # - click the confirm link in the email from www.formspree.io
     # - you're done. Happy mailing!
-    # formEmail = "example@domain.com"
+    formEmail = "lbeckers.mfa2021@london.edu"
 
     # Contact Section
     # You can add multiple emails, phone numbers, or addresses
@@ -178,7 +178,7 @@ disqusShortname = ""
     title = "Phone"
     phone = "+49 17647539183"
 
-    [[params.contact.address]]
+#   [[params.contact.address]]
 #    title = "Address"
 #    street = "Street"
 #    city = "City, ST 00000"
