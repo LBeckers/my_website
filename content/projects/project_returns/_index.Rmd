@@ -1,10 +1,7 @@
 ---
-date: "2020-10-01T22:27:21-05:00"
-draft: false
-image: risk_vs_returns.jpg
-slug: projects
-title: Risk vs Return within DJIA
+site: blogdown:::blogdown_site
 ---
+
 
 
 
