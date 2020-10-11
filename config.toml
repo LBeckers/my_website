@@ -82,8 +82,8 @@ disqusShortname = ""
     # To change the background image on the homepage banner, replace 'banner.jpg' in
     # the 'static/img' folder.
     title = "Hi, my name is Leif"
-    subtitle = "Welcome to my finance related data analytics portfolio"
-    buttonText = "Jump straight in"
+    subtitle = "Welcome to my mainly finance related data analytics portfolio"
+    buttonText = "Jump straight in ->"
 
 
   # Tiles Section
@@ -92,10 +92,10 @@ disqusShortname = ""
     # Display your showcases here.
     
     [[params.tiles.showcase]]
-      title = "Aliquam"
-      subtitle = "Ipsum Dolor Sit Amet"
-      image = "pic01.jpg"
-      url = "blogs/aliquam"
+      title = "Financial Returns across DJIA"
+      subtitle = "Let's have a simple look at return vs risk of stocks"
+      image = "risk_vs_return.jpg"
+      url = "blogs/risk_vs_return"
 
     [[params.tiles.showcase]]
       title = "Tempus"
