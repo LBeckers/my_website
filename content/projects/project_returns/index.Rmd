@@ -1,16 +1,7 @@
 ---
-title: "Risk vs Return"
-author: "Leif Beckers"
-date: "September 2020"
-output:
-  html_document:
-    theme: flatly
-    highlight: zenburn
-    number_sections: yes
-    toc: yes
-    toc_float: yes
-    code_folding: show
+site: blogdown:::blogdown_site
 ---
+
 
 
 ```{r, setup, echo=FALSE}
