@@ -1,14 +1,14 @@
 ---
-title: "Financial Returns across DJIA"
-date: '2020-10-01T21:28:43-05:00'
-description: ''
-draft: no
-image: risk_vs_return.jpeg
-keywords: ''
-slug: riskvreturn
 categories:
-- ''
-- ''
+- ""
+- ""
+date: '2020-10-01T21:28:43-05:00'
+description: "Is mask acceptance high or low in the US? NYT Survey analysis""
+draft: false
+image: risk_vs_return.jpeg
+keywords: ""
+slug: riskvreturn
+title: Financial Returns across DJIA
 ---
 
 
