@@ -1,14 +1,14 @@
 ---
-categories:
-- ""
-- ""
-date: "2020-10-01T21:28:43-05:00"
-description: ""
-draft: false
+title: "Financial Returns across DJIA"
+date: '2020-10-01T21:28:43-05:00'
+description: ''
+draft: no
 image: risk_vs_return.jpeg
-keywords: ""
+keywords: ''
 slug: riskvreturn
-title: Financial Returns across DJIA
+categories:
+- ''
+- ''
 ---
 
 
@@ -56,7 +56,7 @@ To first identify which stocks we want to download data for, we must know their 
 
 
 ```{r load_nyse_data, message=FALSE, warning=FALSE}
-nyse <- read_csv(here::here("projects","project_returns","data","nyse.csv"))
+nyse <- read_csv(here::here("content","projects","project_returns","data","nyse.csv"))
 ```
 
 Lets briefly examine this dataset, to see the number of companies per sector, in descending order:

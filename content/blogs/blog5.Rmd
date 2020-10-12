@@ -1,14 +1,14 @@
 ---
-categories:
-- ""
-- ""
-date: "2020-10-01T21:28:43-05:00"
-description: ""
-draft: false
+title: "Financial Returns across DJIA"
+date: '2020-10-01T21:28:43-05:00'
+description: ''
+draft: no
 image: risk_vs_return.jpeg
-keywords: ""
+keywords: ''
 slug: riskvreturn
-title: Financial Returns across DJIA
+categories:
+- ''
+- ''
 ---
 
 
