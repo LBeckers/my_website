@@ -98,10 +98,10 @@ disqusShortname = ""
       url = "projects/project_returns/riskvreturn"
 
     [[params.tiles.showcase]]
-      title = "Tempus"
-      subtitle = "Feugiat Amet Tempus"
-      image = "pic02.jpg"
-      url = "blogs/blog5"
+      title = "Merger Arbitrage in the US"
+      subtitle = "Testing M&A Arbitrage Opportunities in the USA"
+      image = "hedge_fund_cover.jpg"
+      url = "projects/merger_arbitrage/DataAnalysisvF"
 
     [[params.tiles.showcase]]
       title = "Magna"

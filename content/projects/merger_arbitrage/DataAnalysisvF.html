@@ -1,0 +1,762 @@
+---
+categories:
+- ""
+- ""
+date: '2020-10-01T21:28:43-05:00'
+description: "Merger Arbitrage - Hedge Fund Strategys"
+draft: false
+image: hedge_fund_cover.jpeg
+keywords: ""
+slug: merger
+title: Merger Arbitrage - Hedge Fund Strategy
+---
+
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
+
+
+<pre class="r"><code>options(tz=&quot;America/New_York&quot;)
+Sys.setenv(TZ=&quot;America/New_York&quot;)</code></pre>
+<div id="data-collection" class="section level1">
+<h1>Data Collection</h1>
+<div id="benchmark-data" class="section level2">
+<h2>Benchmark data</h2>
+<p>Risk-free Rates</p>
+<pre class="r"><code>tbill &lt;- vroom(&quot;https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23e1e9f0&amp;chart_type=line&amp;drp=0&amp;fo=open%20sans&amp;graph_bgcolor=%23ffffff&amp;height=450&amp;mode=fred&amp;recession_bars=on&amp;txtcolor=%23444444&amp;ts=12&amp;tts=12&amp;width=1168&amp;nt=0&amp;thu=0&amp;trc=0&amp;show_legend=yes&amp;show_axis_titles=yes&amp;show_tooltip=yes&amp;id=DTB3&amp;scale=left&amp;cosd=2009-08-01&amp;coed=2020-10-09&amp;line_color=%234572a7&amp;link_values=false&amp;line_style=solid&amp;mark_type=none&amp;mw=3&amp;lw=2&amp;ost=-99999&amp;oet=99999&amp;mma=0&amp;fml=a&amp;fq=Daily&amp;fam=avg&amp;fgst=lin&amp;fgsnd=2020-02-01&amp;line_index=1&amp;transformation=lin&amp;vintage_date=2020-10-14&amp;revision_date=2020-10-14&amp;nd=1954-01-04&quot;) %&gt;%
+  mutate(DTB3 = DTB3/100) %&gt;%
+  rename(&quot;date&quot; = &quot;DATE&quot;,
+         &quot;T_bill&quot; = &quot;DTB3&quot;) %&gt;% 
+  mutate(T_bill_d = (1 + T_bill)^(1/252)-1,
+         date = as.Date(date,&quot;%Y-%m-%d&quot;))</code></pre>
+<p>Indices</p>
+<pre class="r"><code>benchmark &lt;- 
+  data.frame(index = c(&quot;MNA&quot;, &quot;^RUA&quot;, &quot;^FTSE&quot;,&quot;^FTAS&quot;, &quot;^IXIC&quot;,&quot;NYA&quot;, &quot;^DJI&quot;, &quot;^GSPC&quot;),
+             description = c(&quot;IQ Merger Arbitrage ETF&quot;, &quot;Russell_3000&quot;, &quot;FTSE 100&quot;, &quot;FTSE All Share&quot;,&quot;NASDAQ_Composite&quot;, &quot;NYSE Composite&quot;, &quot;Dow Jones Industrial Average&quot;, &quot;SP_500&quot;)) %&gt;% 
+  tq_get(get  = &quot;stock.prices&quot;,
+         from = &quot;2009-01-01&quot;,
+         to   = &quot;2020-08-31&quot;) %&gt;%
+  select(index, description, date, close) %&gt;%
+  group_by(index) %&gt;%
+  mutate(index_return = close/lag(close) - 1)</code></pre>
+</div>
+<div id="merger-data" class="section level2">
+<h2>Merger Data</h2>
+<p>Merger Deals</p>
+<pre class="r"><code>stocks2 &lt;- read_excel(&quot;MA_vF.xlsx&quot;, sheet = &quot;Sheet1&quot;) %&gt;% 
+  select(acquirer, target, DealStatus, announce_date, close_date) %&gt;%
+  mutate(DealStatus = case_when(
+    DealStatus == &quot;Completed&quot; ~ DealStatus,
+    TRUE ~ &quot;Failed&quot;),
+    DealID = paste(acquirer,target))</code></pre>
+</div>
+<div id="get-stock-data-and-build-dataframes" class="section level2">
+<h2>Get Stock Data and build Dataframes</h2>
+<div id="acquirer-data" class="section level3">
+<h3>Acquirer Data</h3>
+<pre class="r"><code>acquirer_raw &lt;- stocks2 %&gt;%
+  select(acquirer) %&gt;% 
+  tq_get(get  = &quot;stock.prices&quot;,
+         from = &quot;2009-01-01&quot;,
+         to   = &quot;2020-08-31&quot;) %&gt;%
+  select(date, acquirer, open, close)</code></pre>
+</div>
+<div id="target-data" class="section level3">
+<h3>Target Data</h3>
+<pre class="r"><code>target_raw &lt;- stocks2 %&gt;% 
+  select(target) %&gt;% 
+  tq_get(get  = &quot;stock.prices&quot;,
+         from = &quot;2009-01-01&quot;,
+         to   = &quot;2020-08-31&quot;) %&gt;%
+  select(date, target, open, close)</code></pre>
+</div>
+<div id="reformat" class="section level3">
+<h3>Reformat</h3>
+<pre class="r"><code># Reformat acquirer data
+stock_data_acquirer &lt;- acquirer_raw %&gt;%
+  group_by(acquirer) %&gt;% 
+  mutate(close_acquirer = sprintf(&quot;%.2f&quot;, open, na.rm = TRUE)) %&gt;%
+  select(acquirer, date, close_acquirer)</code></pre>
+<pre class="r"><code># Reformat target data
+stock_data_target &lt;- target_raw %&gt;%
+  group_by(target) %&gt;% 
+  mutate(close_target = sprintf(&quot;%.2f&quot;, open, na.rm = TRUE)) %&gt;%
+  select(target, date, close_target)</code></pre>
+</div>
+</div>
+</div>
+<div id="trade-from-1-day-past-announcement-date" class="section level1">
+<h1>Trade from 1 day past announcement date</h1>
+<pre class="r"><code>acq_tar &lt;- stocks2 %&gt;%
+  
+  #Add acquirer data
+  left_join(stock_data_acquirer, by = c(&quot;acquirer&quot;)) %&gt;%
+  distinct(DealID, date, .keep_all = T) %&gt;% 
+  mutate(announce_date = as.Date(announce_date,&quot;%Y-%m-%d&quot;, tz = &quot;America/New_York&quot;),
+         close_date = as.Date(close_date,&quot;%Y-%m-%d&quot;, tz = &quot;America/New_York&quot;),
+         standard_date = date - announce_date,
+         standard_date2 = lead(standard_date, n = 2L)) %&gt;% 
+  group_by(DealID) %&gt;% 
+  filter(standard_date &gt;= -2,
+         date &lt;= close_date) %&gt;% 
+  mutate(period = row_number(),
+         period = period + as.numeric(time_length( min(standard_date), &quot;days&quot;)) -2 ) %&gt;% 
+ 
+  # Add target data
+  left_join(stock_data_target, by = c(&quot;target&quot;, &quot;date&quot;)) %&gt;%
+  drop_na(close_target) %&gt;%
+  
+  # Add Acquirer Returns
+  group_by(DealID) %&gt;%
+  mutate(close_acquirer = as.numeric(close_acquirer, na.rm = TRUE),
+    ret_acq = ifelse(period &lt; 0, NA, ifelse(period &gt; 0, close_acquirer/lag(close_acquirer) - 1, 0))) %&gt;%
+  
+  # Add target Returns
+  group_by(DealID) %&gt;%
+  mutate(close_target = as.numeric(close_target, na.rm = TRUE),
+    ret_tar = ifelse(period &lt; 0, NA, ifelse(period &gt; 0, close_target/lag(close_target) - 1, 0))) %&gt;%
+  
+  # Add combined returns
+  
+  mutate(ret_combined =  ifelse(is.na(ret_tar),NA, ifelse(is.na(ret_acq),NA, ret_tar - ret_acq))) %&gt;% 
+  # mutate(ret_combined = ifelse(DealStatus == &quot;Completed&quot;, ret_tar - ret_acq,  ret_acq - ret_tar)) %&gt;% # If predict deal succeeds vs predict deal fails, assuming 100% predictive capabilities - CAN CHANGE
+  # Get rid of non-sense returns
+  filter(!is.infinite(ret_combined))</code></pre>
+<div id="daily-return-and-acquirer---target-spread" class="section level2">
+<h2>Daily Return and Acquirer - Target Spread</h2>
+<pre class="r"><code>acq_tar %&gt;%
+  group_by(period) %&gt;%
+  # Summarise means per period whilst removing all NAs. Bad data quality forces us to do this
+  summarise(mean_acq = mean(ret_acq, na.rm = TRUE),
+            mean_tar = mean(ret_tar, na.rm = TRUE),
+            mean_strat = mean(ret_combined, na.rm = TRUE)) %&gt;%
+  filter(period &lt;= 50) %&gt;%
+  ggplot() +
+  theme_bw() +
+  geom_line(aes(x = period, y = (mean_acq)), colour = &quot;red&quot;) + # Acquirer return
+  geom_line(aes(x = period, y = (mean_tar)), colour = &quot;blue&quot;) + # Target return
+
+  labs(title = &quot;Return spread between Target and Acquirer narrows quickly&quot;,
+       subtitle = &quot;Mean Daily Returns of Targets and Acquirers per Day from Announcement&quot;,
+       y = &quot;Daily Returns&quot;,
+       x = &quot;Day from initial announcement&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-7-1.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggsave(&quot;Return Spread Target an Acquirer.png&quot;,
+       plot = last_plot(),
+       scale = 1,
+       width = 20,
+       height = 15,
+       units = &quot;cm&quot;,
+       dpi = 300,
+       limitsize = TRUE)
+
+knitr::include_graphics(here::here(&quot;Return Spread Target an Acquirer.png&quot;), error = FALSE)</code></pre>
+<p><img src="Return%20Spread%20Target%20an%20Acquirer.png" width="1181" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>acq_tar %&gt;%
+  group_by(period) %&gt;%
+  # Summarise means per period whilst removing all NAs. Bad data quality forces us to do this
+  summarise(mean_acq = mean(ret_acq, na.rm = TRUE),
+            mean_tar = mean(ret_tar, na.rm = TRUE),
+            mean_strat = mean(ret_combined, na.rm = TRUE)) %&gt;%
+  filter(period &lt;= 50) %&gt;%
+  ggplot() +
+  theme_bw() +
+  geom_line(aes(x = period, y = (mean_strat)), colour = &quot;green&quot;) + # Portfolio 
+  labs(title = &quot;Target and Acquirer Spread drives Strategy Return&quot;,
+       subtitle = &quot;Mean Daily Returns of Strategy per Day from Announcement&quot;,
+       y = &quot;Daily Returns&quot;,
+       x = &quot;Day from initial announcement&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-7-3.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggsave(&quot;Strategy Return from Spread.png&quot;,
+       plot = last_plot(),
+       scale = 1,
+       width = 20,
+       height = 15,
+       units = &quot;cm&quot;,
+       dpi = 300,
+       limitsize = TRUE)
+
+knitr::include_graphics(here::here(&quot;Strategy Return from Spread.png&quot;), error = FALSE)</code></pre>
+<p><img src="Strategy%20Return%20from%20Spread.png" width="1181" style="display: block; margin: auto;" /></p>
+</div>
+<div id="cumulative-return" class="section level2">
+<h2>Cumulative Return</h2>
+<div id="acquirer" class="section level3">
+<h3>Acquirer</h3>
+<pre class="r"><code># Cumulative return for acquirer
+initial_acq &lt;- acq_tar %&gt;%
+  filter(period == 0) %&gt;%
+  rename(initial_acq = close_acquirer) %&gt;%
+  select(acquirer, target, initial_acq) %&gt;%
+  distinct()
+
+cum_acq &lt;- left_join(acq_tar, initial_acq, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  mutate(cum_ret_acq = ifelse(period &gt; -1, close_acquirer/initial_acq - 1, NA)) %&gt;%
+  group_by(period) %&gt;%
+  summarise(mean_cum_ret_acq = mean(cum_ret_acq, na.rm =TRUE)) %&gt;%
+  filter(period &lt;= 50)</code></pre>
+</div>
+<div id="target" class="section level3">
+<h3>Target</h3>
+<pre class="r"><code># Cumulative return for target
+initial_tar &lt;- acq_tar %&gt;%
+  filter(period == 0) %&gt;%
+  rename(initial_tar = close_target) %&gt;%
+  select(acquirer, target, initial_tar) %&gt;% 
+  distinct()
+
+cum_tar &lt;- left_join(acq_tar, initial_tar, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  mutate(cum_ret_tar = ifelse(period &gt; -1, close_target/initial_tar - 1, NA)) %&gt;%
+  group_by(period) %&gt;%
+  summarise(mean_cum_ret_tar = mean(cum_ret_tar, na.rm =TRUE)) %&gt;%
+  filter(period &lt;= 50)</code></pre>
+</div>
+<div id="cumulative-return-spread" class="section level3">
+<h3>Cumulative Return Spread</h3>
+<pre class="r"><code># Combine all
+cum_all &lt;- left_join(cum_acq, cum_tar, by = &quot;period&quot;) %&gt;%
+  filter(period &lt;= 50)
+  
+
+ggplot(cum_all) +
+  
+  geom_line(aes(x = period, y = mean_cum_ret_tar), colour = &quot;blue&quot;) +
+  geom_line(aes(x = period, y = mean_cum_ret_acq), colour = &quot;red&quot;) +
+  theme_bw() +
+  labs(subtitle = &quot;Mean Cumulative Return - Investments start 1 day after announcement&quot;,
+       title = &quot;Target outperformance in cumulative return driven by early gains&quot;,
+       y = &quot;Cumulative Return&quot;,
+       x = &quot;Day from announcement&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-10-1.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggsave(&quot;Cumulative Returns Target and Acquirer.png&quot;,
+       plot = last_plot(),
+       scale = 1,
+       width = 20,
+       height = 15,
+       units = &quot;cm&quot;,
+       dpi = 300,
+       limitsize = TRUE)
+
+knitr::include_graphics(here::here(&quot;Cumulative Returns Target and Acquirer.png&quot;), error = FALSE)</code></pre>
+<p><img src="Cumulative%20Returns%20Target%20and%20Acquirer.png" width="1181" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="correlation-between-return-and-deal-completion" class="section level2">
+<h2>Correlation between return and deal completion</h2>
+<div id="acquirer-1" class="section level3">
+<h3>Acquirer</h3>
+<pre class="r"><code>end_acq &lt;- acq_tar %&gt;%
+  mutate(diff = close_date - date) %&gt;%
+  filter(diff == 0) %&gt;%
+  rename(end_acq = close_acquirer) %&gt;%
+  select(acquirer, period, target, end_acq, DealStatus) %&gt;%
+  distinct()
+
+
+deal_ret_acq &lt;- left_join(end_acq, initial_acq, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;% 
+  distinct() %&gt;%
+  mutate(annualised_ret = (end_acq/initial_acq)^(252/period) - 1) %&gt;%
+  group_by(DealStatus) %&gt;%
+  summarise(mean_annualised_acq_ret = median(annualised_ret, na.rm = TRUE))
+
+deal_ret_acq</code></pre>
+<p><table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-11">
+<col><col><tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">DealStatus</th><th style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">mean_annualised_acq_ret</th></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">Completed</td><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">-0.0129</td></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Failed</td><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">-0.46&nbsp;&nbsp;</td></tr>
+</table>
+
+### Target</p>
+<pre class="r"><code>end_tar &lt;- acq_tar %&gt;%
+  mutate(diff = close_date - date) %&gt;%
+  filter(diff == 0) %&gt;%
+  rename(end_tar = close_target) %&gt;%
+  select(acquirer, period, target, end_tar, DealStatus) %&gt;%
+  distinct()
+
+
+deal_ret_tar &lt;- left_join(end_tar, initial_tar, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  filter(!is.na(end_tar)) %&gt;%
+  mutate(annualised_ret = (end_tar/initial_tar)^(252/period) - 1) %&gt;%
+  group_by(DealStatus) %&gt;%
+  summarise(mean_annualised_tar_ret = sprintf(&quot;%.2f&quot;,median(annualised_ret, na.rm = TRUE)))
+
+deal_ret_tar</code></pre>
+<table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-12">
+<col><col><tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">DealStatus</th><th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">mean_annualised_tar_ret</th></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">Completed</td><td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">0.09</td></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Failed</td><td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">-0.17</td></tr>
+</table>
+
+<p><em>Huge failed deal target return driven by T - STRP deal, where STRP’s stock increased by 150% in 20 days.</em></p>
+</div>
+</div>
+<div id="returns-of-strategy-over-timeline" class="section level2">
+<h2>Returns of strategy over timeline</h2>
+<div id="sp-500-is-no-deal" class="section level3">
+<h3>S&amp;P 500 is no deal</h3>
+<pre class="r"><code>acq_tar2 &lt;- acq_tar %&gt;%
+  filter(period &lt;= 50) %&gt;% 
+  group_by(date) %&gt;%
+  summarise(ret_strat = mean(ret_combined)) %&gt;% 
+  filter(!is.na(ret_strat))
+
+
+
+
+SP_initial &lt;- benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  filter(date &gt;= &quot;2015-01-01&quot;) %&gt;%
+  arrange(date) %&gt;%
+  head(n = 1) %&gt;%
+  rename(initial_index = close) %&gt;%
+  select(- date, - index_return)
+
+  ggplot(acq_tar2) +
+  geom_line(aes(x = date, y = ret_strat), colour = &quot;red&quot;) </code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-13-1.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  arrange(date) %&gt;%
+  left_join(SP_initial, by = c(&quot;description&quot;, &quot;index&quot;)) %&gt;%
+  left_join(acq_tar2, by = &quot;date&quot;) %&gt;%
+  select(date, close, initial_index, ret_strat) %&gt;%
+  mutate(index_ret = close/lag(close) - 1,
+         cum_index_ret = close/initial_index,
+         ret_strat_adjusted = ifelse(is.na(ret_strat), index_ret, ret_strat)) %&gt;%
+  filter(date &gt;= &quot;2015-01-01&quot;) %&gt;%
+  mutate(retplus1 = ret_strat_adjusted + 1,
+    cum_ret_strat = cumprod(retplus1)) %&gt;%
+  ggplot() +
+  geom_line(aes(x = date, y = cum_index_ret), colour = &quot;red&quot;) +
+  geom_line(aes(x = date, y = cum_ret_strat), colour = &quot;green&quot;) +
+  labs(subtitle = &quot;Cumulative Return Strategy vs Index&quot;,
+       title = &quot;Perfect Foresight Generates Above Market Returns&quot;,
+       y = &quot;Cumulative Return&quot;,
+       x = &quot;Day from initial investment&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-13-2.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggsave(&quot;Cumulative Return Strategy vs Index.png&quot;,
+       plot = last_plot(),
+       scale = 1,
+       width = 20,
+       height = 15,
+       units = &quot;cm&quot;,
+       dpi = 300,
+       limitsize = TRUE)
+
+knitr::include_graphics(here::here(&quot;Cumulative Return Strategy vs Index.png&quot;), error = FALSE)</code></pre>
+<p><img src="Cumulative%20Return%20Strategy%20vs%20Index.png" width="1181" style="display: block; margin: auto;" />
+### Risk free if no deal</p>
+<pre class="r"><code>benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  arrange(date) %&gt;%
+  left_join(SP_initial, by = c(&quot;description&quot;, &quot;index&quot;)) %&gt;%
+  left_join(acq_tar2, by = &quot;date&quot;) %&gt;%
+  left_join(tbill, by = &quot;date&quot;) %&gt;%
+  select(date, close, initial_index, ret_strat, T_bill_d) %&gt;%
+  mutate(index_ret = close/lag(close) - 1,
+         cum_index_ret = close/initial_index,
+         ret_strat_adjusted = ifelse(is.na(ret_strat), T_bill_d, ret_strat)) %&gt;%
+  filter(date &gt;= &quot;2014-05-01&quot;) %&gt;%
+  mutate(retplus1 = ret_strat_adjusted + 1,
+    cum_ret_strat = cumprod(retplus1)) %&gt;%
+  ggplot() +
+  geom_line(aes(x = date, y = cum_index_ret), colour = &quot;red&quot;) +
+  geom_line(aes(x = date, y = cum_ret_strat), colour = &quot;green&quot;) +
+  labs(subtitle = &quot;Cumulative Return Strategy vs Index&quot;,
+       title = &quot;Perfect Foresight Generates Above Market Returns&quot;,
+       y = &quot;Cumulative Return&quot;,
+       x = &quot;Day from initial investment&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-14-1.png" width="648" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="capm" class="section level2">
+<h2>CAPM</h2>
+<pre class="r"><code>benchmarkSP &lt;- benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  pivot_wider(values_from = index_return, names_from = description) %&gt;%
+  select(date, SP_500)
+
+
+CAPM &lt;- acq_tar %&gt;%
+  filter(period &lt;= 20) %&gt;% 
+  left_join(tbill, by = &quot;date&quot;) %&gt;%
+  left_join(benchmarkSP, by = &quot;date&quot;) %&gt;% 
+  filter(!is.na(ret_combined)) %&gt;% 
+  mutate(Rm_Rf = SP_500 - T_bill_d,
+         Rs_Rf = ret_combined - T_bill_d) %&gt;%  # CAN MUTATE RET_Strat = S&amp;P/TBill if return = NA, then use that to replace ret_combined here
+  drop_na(Rm_Rf, Rs_Rf) %&gt;%
+  filter(!is.infinite(Rs_Rf))
+
+ggplot(CAPM, aes(x = Rm_Rf, y = Rs_Rf, na.rm = TRUE)) +
+  geom_point() +
+  geom_smooth(method = lm)  +
+  ylim(-1,1) +
+  labs(subtitle = &quot;Excess Returns of Startegy vs Market Benchmark (scale ignoring 2 outliers)&quot;,
+       title = &quot;Regression shows minimal positive Alpha and Beta for daily returns&quot;,
+       y = &quot;Excess Return Strategy&quot;,
+       x = &quot;Excess Return Benchmark&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-15-1.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggsave(&quot;Excess Returns of Startegy vs Market Benchmark.png&quot;,
+       plot = last_plot(),
+       scale = 1,
+       width = 25,
+       height = 15,
+       units = &quot;cm&quot;,
+       dpi = 300,
+       limitsize = TRUE)
+
+knitr::include_graphics(here::here(&quot;Excess Returns of Startegy vs Market Benchmark.png&quot;), error = FALSE)</code></pre>
+<p><img src="Excess%20Returns%20of%20Startegy%20vs%20Market%20Benchmark.png" width="1476" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>CAPM_regression &lt;- lm(Rs_Rf ~ Rm_Rf, data = CAPM, na.rm =TRUE)
+
+CAPM_regression</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Rs_Rf ~ Rm_Rf, data = CAPM, na.rm = TRUE)
+## 
+## Coefficients:
+## (Intercept)        Rm_Rf  
+##    0.005822     0.000526</code></pre>
+<pre class="r"><code>huxreg(CAPM_regression,
+       statistics = c(&#39;#observations&#39; = &#39;nobs&#39;, 
+                      &#39;R squared&#39; = &#39;r.squared&#39;, 
+                      &#39;Adj. R Squared&#39; = &#39;adj.r.squared&#39;, 
+                      &#39;Residual SE&#39; = &#39;sigma&#39;), 
+       bold_signif = 0.05, 
+       stars = NULL
+)</code></pre>
+<table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-15">
+<col><col><tr>
+<th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">(1)</th></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">(Intercept)</th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">0.006&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: bold;">(0.003)</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Rm_Rf</th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">0.001&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">(0.311)</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">#observations</th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">2213&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">R squared</th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">0.000&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Adj. R Squared</th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">-0.000&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Residual SE</th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">0.139&nbsp;</td></tr>
+</table>
+
+<pre class="r"><code>msummary(CAPM_regression)</code></pre>
+<pre><code>##             Estimate Std. Error t value Pr(&gt;|t|)  
+## (Intercept) 0.005822   0.002950    1.97    0.049 *
+## Rm_Rf       0.000526   0.311403    0.00    0.999  
+## 
+## Residual standard error: 0.139 on 2211 degrees of freedom
+## Multiple R-squared:  1.29e-09,   Adjusted R-squared:  -0.000452 
+## F-statistic: 2.85e-06 on 1 and 2211 DF,  p-value: 0.999</code></pre>
+<p>—– END OF ANALYSIS USED IN PAPER ——–</p>
+<div id="unsused-calculations" class="section level3">
+<h3>Unsused Calculations</h3>
+<p>The remainder of this document are conducted analyses that were chosen not to report on in the project.</p>
+<p>TRADE AFTER ANNOUNCEMENT DATE - SHOULD USE CLOSING PRICES HERE</p>
+<pre class="r"><code># Reformat acquirer data
+stock_data_acquirer_v2 &lt;- acquirer_raw %&gt;%
+  group_by(acquirer) %&gt;% 
+  mutate(close_acquirer = sprintf(&quot;%.2f&quot;, close, na.rm = TRUE)) %&gt;%
+  select(acquirer, date, close_acquirer)</code></pre>
+<pre class="r"><code># Reformat target data
+stock_data_target_v2 &lt;- target_raw %&gt;%
+  group_by(target) %&gt;% 
+  mutate(close_target = sprintf(&quot;%.2f&quot;, close, na.rm = TRUE)) %&gt;%
+  select(target, date, close_target)</code></pre>
+<pre class="r"><code>acq_tar &lt;- stocks2 %&gt;%
+  
+  #Add acquirer data
+  left_join(stock_data_acquirer, by = c(&quot;acquirer&quot;)) %&gt;%
+  distinct(DealID, date, .keep_all = T) %&gt;% 
+  mutate(announce_date = as.Date(announce_date,&quot;%Y-%m-%d&quot;, tz = &quot;America/New_York&quot;),
+         close_date = as.Date(close_date,&quot;%Y-%m-%d&quot;, tz = &quot;America/New_York&quot;),
+         standard_date = date - announce_date,
+         standard_date2 = lead(standard_date, n = 2L)) %&gt;% 
+  group_by(DealID) %&gt;% 
+  filter(standard_date &gt;= -2,
+         date &lt;= close_date) %&gt;% 
+  mutate(period = row_number(),
+         period = period + as.numeric(time_length( min(standard_date), &quot;days&quot;)) -1) %&gt;% 
+
+  left_join(stock_data_target, by = c(&quot;target&quot;, &quot;date&quot;)) %&gt;%
+  drop_na(close_target) %&gt;%
+
+  group_by(DealID) %&gt;%
+  mutate(close_acquirer = as.numeric(close_acquirer, na.rm = TRUE),
+    ret_acq = ifelse(period &lt; 0, NA, ifelse(period &gt; 0, close_acquirer/lag(close_acquirer) - 1, 0))) %&gt;%
+  
+  group_by(DealID) %&gt;%
+  mutate(close_target = as.numeric(close_target, na.rm = TRUE),
+    ret_tar = ifelse(period &lt; 0, NA, ifelse(period &gt; 0, close_target/lag(close_target) - 1, 0))) %&gt;%
+  
+  
+  mutate(ret_combined =  ret_tar - ret_acq) %&gt;% 
+
+  filter(!is.infinite(ret_combined))
+
+
+acq_tar_v2 &lt;- stocks2 %&gt;%
+  
+  #Add acquirer data
+  left_join(stock_data_acquirer_v2, by = c(&quot;acquirer&quot;)) %&gt;%
+  distinct(DealID, date, .keep_all = T) %&gt;% 
+  mutate(announce_date = as.Date(announce_date,&quot;%Y-%m-%d&quot;, tz = &quot;America/New_York&quot;),
+         close_date = as.Date(close_date,&quot;%Y-%m-%d&quot;, tz = &quot;America/New_York&quot;),
+         standard_date = date - announce_date,
+         standard_date2 = lead(standard_date, n = 2L)) %&gt;% 
+  group_by(DealID) %&gt;% 
+  filter(standard_date2 &gt;= -2,
+         date &lt;= close_date) %&gt;%
+  # Add period number (by trading days)
+  mutate(period = row_number(),
+         period = period + as.numeric(time_length( min(standard_date), &quot;days&quot;)) -1) %&gt;% 
+  
+  # Add target data
+  left_join(stock_data_target_v2, by = c(&quot;target&quot;, &quot;date&quot;)) %&gt;%
+  drop_na(close_target) %&gt;%
+  
+  # Add Acquirer Returns
+  group_by(DealID) %&gt;%
+  mutate(close_acquirer = as.numeric(close_acquirer, na.rm = TRUE),
+    ret_acq = ifelse(period &lt; 0, NA, ifelse(period &gt; 0, close_acquirer/lag(close_acquirer) - 1, 0))) %&gt;%
+  
+  # Add target Returns
+  group_by(DealID) %&gt;%
+  mutate(close_target = as.numeric(close_target, na.rm = TRUE),
+    ret_tar = ifelse(period &lt; 0, NA, ifelse(period &gt; 0, close_target/lag(close_target) - 1, 0))) %&gt;%
+  
+  # Add combined returns
+  mutate(ret_combined =  ret_tar - ret_acq) %&gt;% # If predict deal succeeds vs predict deal fails, assuming 100% predictive capabilities - CAN CHANGE
+  
+  filter(!is.infinite(ret_combined))
+
+# acq_tar_v2 %&gt;% filter(period == 0) %&gt;% 
+#   mutate(match = announce_date - date) %&gt;% 
+#   summarise(sum(match))</code></pre>
+<p>Daily Return</p>
+<pre class="r"><code>acq_tar_v2 %&gt;%
+  group_by(period) %&gt;%
+  # Summarise means per period whilst removing all NAs. Bad data quality forces us to do this
+  summarise(mean_acq = mean(ret_acq, na.rm = TRUE),
+            mean_tar = mean(ret_tar, na.rm = TRUE),
+            mean_strat = mean(ret_combined, na.rm = TRUE)) %&gt;%
+  filter(period &lt;= 50) %&gt;%
+  ggplot() +
+  theme_bw() +
+  geom_line(aes(x = period, y = mean_acq), colour = &quot;red&quot;) + # Acquirer return
+  geom_line(aes(x = period, y = mean_tar), colour = &quot;blue&quot;) + # Target return
+  geom_line(aes(x = period, y = mean_strat), colour = &quot;green&quot;) + # Portfolio 
+  labs(title = &quot;Return spread between Target and Acquirer narrows quickly&quot;,
+       subtitle = &quot;Mean Daily Returns of Targets, Acquirers and Strategy per Day from Announcement&quot;,
+       y = &quot;Daily Returns&quot;,
+       x = &quot;Day from initial investment&quot;) + 
+  theme_economist_white()</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-19-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p>Cumulative Return</p>
+<pre class="r"><code># Cumulative return for acquirer
+initial_acq_v2 &lt;- acq_tar_v2 %&gt;%
+  filter(period == 0) %&gt;%
+  rename(initial_acq = close_acquirer) %&gt;%
+  select(acquirer, target, initial_acq) %&gt;%
+  distinct()
+
+cum_acq_v2 &lt;- left_join(acq_tar_v2, initial_acq_v2, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  mutate(cum_ret_acq = ifelse(period &gt; 0, close_acquirer/initial_acq - 1, NA)) %&gt;%
+  group_by(period) %&gt;%
+  summarise(mean_cum_ret_acq = mean(cum_ret_acq, na.rm =TRUE)) %&gt;%
+  filter(period &lt;= 50)</code></pre>
+<pre class="r"><code># Cumulative return for target
+initial_tar_v2 &lt;- acq_tar_v2 %&gt;%
+  filter(period == 0) %&gt;%
+  rename(initial_tar = close_target) %&gt;%
+  select(acquirer, target, initial_tar)
+
+cum_tar_v2 &lt;- left_join(acq_tar_v2, initial_tar_v2, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  mutate(cum_ret_tar = ifelse(period &gt; 0, close_target/initial_tar - 1, NA)) %&gt;%
+  group_by(period) %&gt;%
+  summarise(mean_cum_ret_tar = mean(cum_ret_tar, na.rm =TRUE)) %&gt;%
+  filter(period &lt;= 50)</code></pre>
+<pre class="r"><code># Combine all
+cum_all_v2 &lt;- left_join(cum_acq_v2, cum_tar_v2, by = &quot;period&quot;)
+  
+
+ggplot(cum_all_v2) +
+  
+  geom_line(aes(x = period, y = mean_cum_ret_tar), colour = &quot;blue&quot;) +
+  geom_line(aes(x = period, y = mean_cum_ret_acq), colour = &quot;red&quot;) +
+  theme_bw() +
+  labs(title = &quot;Mean Cumulative Return&quot;,
+       subtitle = &quot;Investments start 1 day after announcement of potential M&amp;A deal&quot;,
+       y = &quot;Cumulative Return&quot;,
+       x = &quot;Day from initial investment&quot;)</code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-22-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p>Correlation between return and deal completion</p>
+<p>Correlation between acquirer return and deal completion</p>
+<pre class="r"><code>end_acq_v2 &lt;- acq_tar_v2 %&gt;%
+  mutate(diff = close_date - date) %&gt;%
+  filter(diff == 0) %&gt;%
+  rename(end_acq = close_acquirer) %&gt;%
+  select(acquirer, period, target, end_acq, DealStatus) %&gt;%
+  distinct()
+
+
+deal_ret_acq_v2 &lt;- left_join(end_acq, initial_acq, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  filter(acquirer != &quot;RTX&quot;) %&gt;%
+  mutate(annualised_ret = (end_acq/initial_acq)^(252/period) - 1) %&gt;%
+  group_by(DealStatus) %&gt;%
+  summarise(mean_annualised_acq_ret = mean(annualised_ret, na.rm = TRUE))
+
+deal_ret_acq_v2</code></pre>
+<table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-23">
+<col><col><tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">DealStatus</th><th style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">mean_annualised_acq_ret</th></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">Completed</td><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">0.0782</td></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Failed</td><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">-0.407&nbsp;</td></tr>
+</table>
+
+<p>Correlation between target return and deal completion</p>
+<pre class="r"><code>end_tar_v2 &lt;- acq_tar_v2 %&gt;%
+  mutate(diff = close_date - date) %&gt;%
+  filter(diff == 0) %&gt;%
+  rename(end_tar = close_target) %&gt;%
+  select(acquirer, period, target, end_tar, DealStatus) %&gt;%
+  distinct()
+
+
+deal_ret_tar_v2 &lt;- left_join(end_tar_v2, initial_tar_v2, by = c(&quot;acquirer&quot;, &quot;target&quot;)) %&gt;%
+  filter(acquirer != &quot;RTX&quot;) %&gt;%
+  mutate(annualised_ret = (end_tar/initial_tar)^(252/period) - 1) %&gt;%
+  group_by(DealStatus) %&gt;%
+  summarise(mean_annualised_tar_ret = mean(annualised_ret, na.rm = TRUE))
+
+deal_ret_tar</code></pre>
+<table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-24">
+<col><col><tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">DealStatus</th><th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">mean_annualised_tar_ret</th></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">Completed</td><td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0.4pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; background-color: rgb(242, 242, 242); font-weight: normal;">0.09</td></tr>
+<tr>
+<td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0.4pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Failed</td><td style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0.4pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">-0.17</td></tr>
+</table>
+
+<p>Returns of strategy over timeline</p>
+<p>Using S&amp;P 500 index if there is no deal</p>
+<pre class="r"><code>acq_tar2_v2 &lt;- acq_tar_v2 %&gt;%
+  group_by(date) %&gt;%
+  summarise(ret_strat = mean(ret_combined))
+
+SP_initial_v2 &lt;- benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  filter(date &gt;= &quot;2014-05-01&quot;) %&gt;%
+  arrange(date) %&gt;%
+  head(n = 1) %&gt;%
+  rename(initial_index = close) %&gt;%
+  select(- date, - index_return)
+
+benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  arrange(date) %&gt;%
+  left_join(SP_initial_v2, by = c(&quot;description&quot;, &quot;index&quot;)) %&gt;%
+  left_join(acq_tar2_v2, by = &quot;date&quot;) %&gt;%
+  select(date, close, initial_index, ret_strat) %&gt;%
+  mutate(index_ret = close/lag(close) - 1,
+         cum_index_ret = close/initial_index,
+         ret_strat_adjusted = ifelse(is.na(ret_strat), index_ret, ret_strat)) %&gt;%
+  filter(date &gt;= &quot;2014-05-01&quot;) %&gt;%
+  mutate(retplus1 = ret_strat_adjusted + 1,
+    cum_ret_strat = cumprod(retplus1)) %&gt;%
+  ggplot() +
+  geom_line(aes(x = date, y = cum_index_ret), colour = &quot;red&quot;) +
+  geom_line(aes(x = date, y = cum_ret_strat), colour = &quot;green&quot;) ###?????### </code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-25-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p>Using risk-free rate if there is no deal</p>
+<pre class="r"><code>benchmark %&gt;%
+  filter(description == &quot;SP_500&quot;) %&gt;%
+  arrange(date) %&gt;%
+  left_join(SP_initial_v2, by = c(&quot;description&quot;, &quot;index&quot;)) %&gt;%
+  left_join(acq_tar2_v2, by = &quot;date&quot;) %&gt;%
+  left_join(tbill, by = &quot;date&quot;) %&gt;%
+  select(date, close, initial_index, ret_strat, T_bill_d) %&gt;%
+  mutate(index_ret = close/lag(close) - 1,
+         cum_index_ret = close/initial_index,
+         ret_strat_adjusted = ifelse(is.na(ret_strat), T_bill_d, ret_strat)) %&gt;%
+  filter(date &gt;= &quot;2014-05-01&quot;) %&gt;%
+  mutate(retplus1 = ret_strat_adjusted + 1,
+    cum_ret_strat = cumprod(retplus1)) %&gt;%
+  ggplot() +
+  geom_line(aes(x = date, y = cum_index_ret), colour = &quot;red&quot;) +
+  geom_line(aes(x = date, y = cum_ret_strat), colour = &quot;green&quot;) ###?????### </code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-26-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p>CAPM</p>
+<pre class="r"><code>CAPM_v2 &lt;- acq_tar_v2 %&gt;%
+  left_join(tbill, by = &quot;date&quot;) %&gt;%
+  left_join(benchmarkSP, by = &quot;date&quot;) %&gt;%
+  mutate(Rm_Rf = SP_500 - T_bill_d,
+         Rs_Rf = ret_combined - T_bill_d) %&gt;%
+  drop_na(Rm_Rf, Rs_Rf) %&gt;%
+  filter(!is.infinite(Rs_Rf))
+
+ggplot(CAPM_v2, aes(x = Rm_Rf, y = Rs_Rf, na.rm = TRUE)) +
+  geom_point() </code></pre>
+<p><img src="/projects/merger_arbitrage/DataAnalysisvF_files/figure-html/unnamed-chunk-27-1.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>CAPM_regression_v2 &lt;- lm(Rs_Rf ~ Rm_Rf, data = CAPM, na.rm =TRUE)
+
+CAPM_regression_v2</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Rs_Rf ~ Rm_Rf, data = CAPM, na.rm = TRUE)
+## 
+## Coefficients:
+## (Intercept)        Rm_Rf  
+##    0.005822     0.000526</code></pre>
+<pre class="r"><code>huxreg(CAPM_regression_v2,
+       statistics = c(&#39;#observations&#39; = &#39;nobs&#39;, 
+                      &#39;R squared&#39; = &#39;r.squared&#39;, 
+                      &#39;Adj. R Squared&#39; = &#39;adj.r.squared&#39;, 
+                      &#39;Residual SE&#39; = &#39;sigma&#39;), 
+       bold_signif = 0.05, 
+       stars = NULL
+)</code></pre>
+<table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-27">
+<col><col><tr>
+<th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">(1)</th></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">(Intercept)</th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: bold;">0.006&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: bold;">(0.003)</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Rm_Rf</th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">0.001&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">(0.311)</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">#observations</th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">2213&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">R squared</th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">0.000&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Adj. R Squared</th><td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">-0.000&nbsp;</td></tr>
+<tr>
+<th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Residual SE</th><td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">0.139&nbsp;</td></tr>
+</table>
+
+</div>
+</div>
+</div>
