@@ -11,8 +11,3 @@ slug: CV
 title: My CV
 ---
 
-``` {r}
-
-knitr::include_graphics(here::here("LLB_CV_20_21.png"), error = FALSE)
-
-```
