@@ -1,7 +1,12 @@
 ---
-date: "2017-10-31T22:27:21-05:00"
+categories:
+- ""
+- ""
+date: "2020-10-20T21:28:43-05:00"
+description: ""
 draft: false
 image: hedge_fund_cover.jpg
+keywords: ""
 slug: DataAnalysisvF
 title: Merger Arbitrage in the US
 ---
