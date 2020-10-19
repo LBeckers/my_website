@@ -7,7 +7,7 @@ description: ""
 draft: false
 image: risk_vs_return.jpg
 keywords: ""
-slug: project_returns
+slug: riskvreturn
 title: Financial Returns across DJIA
 ---
 
