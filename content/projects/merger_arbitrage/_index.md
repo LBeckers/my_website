@@ -7,7 +7,7 @@ description: ""
 draft: false
 image: hedge_fund_cover.jpg
 keywords: ""
-slug: DataAnalysisvF
+slug: merger_arbitrage
 title: Merger Arbitrage in the US
 ---
 

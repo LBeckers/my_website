@@ -7,7 +7,7 @@ description: ""
 draft: false
 image: Mexico_AirBnB.jpg
 keywords: ""
-slug: Airbnb2
+slug: airbnb_mexico_city
 title: AirBnB in Mexico City
 ---
 
