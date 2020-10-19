@@ -8,4 +8,6 @@ title: My CV
 
 Check out my CV...
 
+knitr::include_graphics(here::here("LLB_CV_20_21.pdf"), error = FALSE)
+
 [download ](CV/LLB_CV_20_21.pdf)
