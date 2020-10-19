@@ -136,7 +136,7 @@ disqusShortname = ""
     # To add more blogs just copy and paste the code.
 
   # Section Type Two
-  [params.two]
+  [params.cv]
     enable = true
     title = "My CV"
     subtitle = """Like the projects above? Check out my CV and get in touch!"""
