@@ -5,10 +5,14 @@ categories:
 date: '2020-10-01T21:28:43-05:00'
 description: ""
 draft: false
-image: LLB_CV_20_21.pdf
+image: LLB_CV_20_21.png
 keywords: ""
 slug: CV
 title: My CV
 ---
 
+``` {r}
 
+knitr::include_graphics(here::here("LLB_CV_20_21.png"), error = FALSE)
+
+```
