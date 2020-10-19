@@ -3,7 +3,7 @@ categories:
 - ""
 - ""
 date: '2020-10-01T21:28:43-05:00'
-description: "Investigating the returns of stock across DJIA""
+description: "Investigating the returns of stock across DJIA"
 draft: false
 image: risk_vs_return.jpeg
 keywords: ""

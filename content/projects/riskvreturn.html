@@ -50,7 +50,7 @@ companies_per_sector</code></pre>
     y = &quot;# of companies on NYSE&quot;
   )+
   theme_economist()</code></pre>
-<p><img src="/projects/project_returns/riskvreturn_files/figure-html/companies_per_sector-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/riskvreturn_files/figure-html/companies_per_sector-1.png" width="648" style="display: block; margin: auto;" /></p>
 <p>Next, I will choose the <a href="https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average">Dow Jones Industrial Aveareg (DJIA)</a> stocks and their ticker symbols and download some data. Besides the thirty stocks that make up the DJIA, I will also add <code>SPY</code> which is an SP500 ETF (Exchange Traded Fund) as comparison.</p>
 <pre class="r"><code>djia_url &lt;- &quot;https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average&quot;
 
@@ -143,7 +143,7 @@ myStocks_returns_annual &lt;- myStocks %&gt;%
     y = &quot;Density&quot;
   )+
   theme_economist()</code></pre>
-<p><img src="/projects/project_returns/riskvreturn_files/figure-html/density_monthly_returns-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/riskvreturn_files/figure-html/density_monthly_returns-1.png" width="648" style="display: block; margin: auto;" /></p>
 <p>This density plots show us two things in general:</p>
 <ol style="list-style-type: decimal">
 <li>In which region do the most common returns lie (i.e. where is the mean)</li>
@@ -178,7 +178,7 @@ myStocks_returns_annual &lt;- myStocks %&gt;%
     y = &quot;Mean Monthly Return&quot;
   ) +
   theme_economist()</code></pre>
-<p><img src="/projects/project_returns/riskvreturn_files/figure-html/risk_return_plot-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/riskvreturn_files/figure-html/risk_return_plot-1.png" width="648" style="display: block; margin: auto;" /></p>
 <p>In finance there is a general expectation of returns being related to risk. In that sense we would be expecting to see a positive correlation between the stocks mean returns and return standard deviation. Any deviation from this means a stock is less attractive then the other. We would always choose a less risky stock with the same return as another stock.</p>
 <p>Notably strong stocks (being less risky than would have been expected for the achieved returns) are:</p>
 <ol style="list-style-type: decimal">
