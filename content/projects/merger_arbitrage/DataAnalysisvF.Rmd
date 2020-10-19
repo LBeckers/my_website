@@ -5,7 +5,7 @@ categories:
 date: '2020-10-01T21:28:43-05:00'
 description: "Merger Arbitrage - Hedge Fund Strategys"
 draft: false
-image: hedge_fund_cover.jpeg
+image: hedge_fund_cover.jpg
 keywords: ""
 slug: DataAnalysisvF
 title: Merger Arbitrage in the US
