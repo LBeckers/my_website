@@ -7,10 +7,9 @@ description: "Determining the expected price for a nights stay in Mexico's Capit
 draft: false
 image: Mexico_AirBnB.jpg
 keywords: ""
-slug: Airbnb2
+slug: airbnb2
 title: AirBnB in Mexico City
 ---
-
 
 ```{r, setup, include=FALSE}
 knitr::opts_chunk$set(
