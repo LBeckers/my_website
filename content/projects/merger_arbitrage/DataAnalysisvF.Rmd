@@ -235,6 +235,7 @@ acq_tar %>%
        x = "Day from initial announcement") + 
   theme_economist_white()
 
+
 ggsave("Return Spread Target an Acquirer.png",
        plot = last_plot(),
        scale = 1,
