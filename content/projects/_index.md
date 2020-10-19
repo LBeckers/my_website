@@ -6,4 +6,4 @@ slug: projects
 title: My Projects
 ---
 
-See all my projects conducted at London Business School at a glance.
+SEE ALL MY PROJECTS CONDUCTED AT LONDON BUSINESS SCHOOL AT A GLANCE.
