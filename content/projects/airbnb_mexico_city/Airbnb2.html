@@ -4679,7 +4679,7 @@ listings5 %&gt;%
        subtitle = &quot;Hosts with 0% Response Rate are potentially fake listings&quot;,
        x = &quot;Host Response Rate&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/hosts%20response-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/hosts%20response-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Investigate distribution of Host Acceptance Rates
 listings5 %&gt;% 
   ggplot() +
@@ -4688,7 +4688,7 @@ listings5 %&gt;%
        subtitle = &quot;Hosts with 0% Acceptance Rate are potentially fake listings&quot;,
        x = &quot;Host Acceptance Rate&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/hosts%20response-2.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/hosts%20response-2.png" width="648" style="display: block; margin: auto;" /></p>
 <p>Due to the competitiveness and strict hosting policies of Airbnb, most hosts tend to have very high acceptance and response rates. Unusually low rates should be considered to be excpluded in the following section.</p>
 <pre class="r"><code># Calculate percentage of super hosts
 listings5 %&gt;% 
@@ -4752,7 +4752,7 @@ listings6 %&gt;%
   
   # Add dollar signs
   scale_x_continuous(labels = scales::dollar_format())</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/price-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/price-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># look for outliers - create boxplot on log of price data
 listings6 %&gt;%
   mutate(log_price = log(price)) %&gt;%
@@ -4767,7 +4767,7 @@ listings6 %&gt;%
        y = &quot;Price - Log-Scale&quot;,
        x = &quot;Property type&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/price-2.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/price-2.png" width="648" style="display: block; margin: auto;" /></p>
 <p>We saw a very skewed distribution of price. Outliers that charge for example over USD7,400 per night (or exp(8.91)) for a property do not seem to be legitimite properties and should therefore be excluded.</p>
 <pre class="r"><code># Find outliers that are to be excluded
 exp(boxplot.stats(log(listings6$price))$out)</code></pre>
@@ -4822,7 +4822,7 @@ listings7 %&gt;%
   theme_economist() +
   # Add dollar signs
   scale_y_continuous(labels = scales::dollar_format())</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/price%20ex%20outliers-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/price%20ex%20outliers-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check new distribution
 listings7 %&gt;%
   ggplot() +
@@ -4836,7 +4836,7 @@ listings7 %&gt;%
        x = &quot;Price per night (USD)&quot;) +
   theme(axis.title.x = element_blank())+
   theme_economist() </code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/price%20ex%20outliers-2.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/price%20ex%20outliers-2.png" width="648" style="display: block; margin: auto;" /></p>
 <p>Our new distribution of price is more visually comprehensible, however when looking at density plots we still find a heavy right-skewness, which should be taken into account going forwards, especially as AirBnB’s maximum price filter is USD1000+.</p>
 </div>
 <div id="review-scores" class="section level3">
@@ -4855,7 +4855,7 @@ listings7 %&gt;%
        x = &quot;review score rating&quot;) +
   facet_wrap(~host_is_superhost) + 
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/review%20scores-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/review%20scores-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Investigate relation of Rating to Price
 listings7 %&gt;%
   ggplot() +
@@ -4867,7 +4867,7 @@ listings7 %&gt;%
        title = &quot;Well rated properties seem to charge more on average \n - but driven by hugely expensive properties&quot;,
        x = &quot;reviw score rating&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/review%20scores-2.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/review%20scores-2.png" width="648" style="display: block; margin: auto;" /></p>
 <p>Looking at review scores we saw that the ratings are left heavily skewed. This could likely be explained by the reciprocal rating mechanism of AirBnB, where hosts also rate the tenants and the tenants’ score impacts their likelihood of them being accepted to a new booking. Irregularities at ratings of 20, 40, 60, and 80 may also be due to new listings with insufficient data, or AirBnB’s rounding algorithms for lower values. Going forwards it could be considered to disregard low rated properties (e.g. &lt;5) as these will have had substantial problems and might be outliers. A normal traveller wouldn’t consider properties with such low ratings.</p>
 <p>That being said we saw a slight over-performance of superhosts compared to normal hosts. We also saw a tendency of better-rated properties to charge a higher price. However this seems to be especially driven by expensive properties.</p>
 </div>
@@ -4884,7 +4884,7 @@ listings7 %&gt;%
   
   # Add dollar sign
   scale_x_continuous(labels = scales::dollar_format())</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/cleaning%20fee-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/cleaning%20fee-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Relate Cleaning fee to Price of minimum stay
 listings7 %&gt;%
   filter(cleaning_fee &gt;= 0) %&gt;% 
@@ -4894,7 +4894,7 @@ listings7 %&gt;%
   labs(subtitle = &quot;Cleaning Fee to Price Ratio Boxplot&quot;,
        title = &quot;In relation to price some cleaning fees are non-sensical and should be excluded&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/cleaning%20fee-2.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/cleaning%20fee-2.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># exclude clean to price outliers
 listings8 &lt;- listings7 %&gt;% 
   mutate(clean_to_price_min = cleaning_fee / (price * minimum_nights)) %&gt;% 
@@ -4911,7 +4911,7 @@ listings8 %&gt;%
   labs(subtitle = &quot;Cleaning Fee vs Price&quot;,
        title = &quot;If cleaning fees are charged they increase in relation to price&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/cleaning%20fee-3.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/cleaning%20fee-3.png" width="648" style="display: block; margin: auto;" /></p>
 <p>We initially looked at the distribution of cleaning fees and found some extraordinarily high fees being charged on some properties. Realising that a mansion costing USD1000+ per night might also be very expensive to clean, we decided to look at a different proxy for the logic behind our cleaning fee numbers - the cleaning fee to price per minimum stay ratio.</p>
 <p>Plotting the boxplot of this ratio we still find many outliers that charge more than 2x the minimum stay price as a cleaning fee, which is not reasonable for a short-term holiday stay. This pricing strategy might be used to trick tenants to look at more expensive properties by making the price per night price artificially low. Whereas this might be legitimate it will significantly skew our findings as we can no longer understand whether part of a cleaning fee is actually the price per night. We therefore excluded all outliers of over 1.97x the cleaning fee to minimum stay price ratio.</p>
 </div>
@@ -4924,7 +4924,7 @@ listings8 %&gt;%
   labs(subtitle = &quot;Accommodates (House Size) Histogram&quot;,
        title = &quot;Most properties accommodate less than 5 guests&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/accommodates-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/accommodates-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>## Create scatterplot of house size and price
 listings8 %&gt;% 
   ggplot()+
@@ -4938,7 +4938,7 @@ listings8 %&gt;%
        title = &quot;Propoerties that can accommodate more guests \ntend to be more expensive&quot;,
        y = &quot;Daily prices (USD)&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/accommodates-2.png" width="648" style="display: block; margin: auto;" />
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/accommodates-2.png" width="648" style="display: block; margin: auto;" />
 Looking at the accommodation variable we can see that the majority of properties in Mexico City accommodate less than 5 guests. We also find that accommodation, as a proxy for house size, is positively correlated to price.</p>
 </div>
 <div id="correlation-analysis" class="section level3">
@@ -4949,7 +4949,7 @@ listings8 %&gt;%
   summarise(log(price), review_scores_rating, accommodates, security_deposit, host_is_superhost) %&gt;% 
   ggpairs(aes(colour = host_is_superhost, alpha = 0.4), 
           title = &quot;Light blue represents superhosts, red represents normal hosts&quot;)</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/correlation-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/correlation-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># ggsave to resize image
 ggsave(&quot;combined_graphs.jpg&quot;, plot = last_plot(), width = 34, height = 18, units =&quot;cm&quot;, dpi = 100) 
 
@@ -5406,7 +5406,7 @@ listings9 %&gt;%
        subtitle = &quot;Price 4 Nights Density Plot&quot;,
        x = &quot;Total price of accommodation for 4 nights (USD)&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/analyse%20price_4_nights-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/analyse%20price_4_nights-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Create logged density plot
 listings9 %&gt;%
   ggplot() +
@@ -5415,7 +5415,7 @@ listings9 %&gt;%
        subtitle = &quot;Logged Price 4 Nights Density Plot&quot;,
       x = &quot;Log of total price of accommodation for 4 nights&quot;) +
   theme_economist()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/analyse%20price_4_nights-2.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/analyse%20price_4_nights-2.png" width="648" style="display: block; margin: auto;" /></p>
 <p>It looks like we should use the log-transformed price_4_nights variable as it is significantly less skewed and closer to normal distribution.</p>
 <div id="review-scores-rating-number-of-reviews-and-property-type" class="section level2">
 <h2>Review scores rating, number of reviews, and property type</h2>
@@ -5450,7 +5450,7 @@ summary(model1)</code></pre>
 ## Multiple R-squared:  0.0428, Adjusted R-squared:  0.0423 
 ## F-statistic: 84.6 on 6 and 11335 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model1) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-3-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-3-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model1)</code></pre>
 <pre><code>##                      GVIF Df GVIF^(1/(2*Df))
@@ -5532,7 +5532,7 @@ summary(model2)</code></pre>
 ## Multiple R-squared:  0.359,  Adjusted R-squared:  0.358 
 ## F-statistic:  704 on 9 and 11332 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model2) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-4-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-4-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model2)</code></pre>
 <pre><code>##                      GVIF Df GVIF^(1/(2*Df))
@@ -5616,7 +5616,7 @@ summary(model3)</code></pre>
 ## Multiple R-squared:  0.209,  Adjusted R-squared:  0.209 
 ## F-statistic: 1.13e+03 on 3 and 12811 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model3) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-5-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-5-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model3)</code></pre>
 <pre><code>##         beds    bathrooms accommodates 
@@ -5684,7 +5684,7 @@ summary(model4)</code></pre>
 ## Multiple R-squared:  0.44,   Adjusted R-squared:  0.439 
 ## F-statistic:  738 on 12 and 11280 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model4) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-6-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-6-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model4)</code></pre>
 <pre><code>##                      GVIF Df GVIF^(1/(2*Df))
@@ -5780,7 +5780,7 @@ summary(model5)</code></pre>
 ## Multiple R-squared:  0.443,  Adjusted R-squared:  0.443 
 ## F-statistic:  691 on 13 and 11279 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model5) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-7-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-7-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model5)</code></pre>
 <pre><code>##                      GVIF Df GVIF^(1/(2*Df))
@@ -5880,7 +5880,7 @@ summary(model6)</code></pre>
 ## Multiple R-squared:  0.446,  Adjusted R-squared:  0.445 
 ## F-statistic:  647 on 14 and 11278 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model6) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-8-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-8-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model6)</code></pre>
 <pre><code>##                      GVIF Df GVIF^(1/(2*Df))
@@ -6002,7 +6002,7 @@ summary(model7)</code></pre>
 ## Multiple R-squared:  0.472,  Adjusted R-squared:  0.471 
 ## F-statistic:  630 on 16 and 11276 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model7) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-10-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-10-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model7)</code></pre>
 <pre><code>##                          GVIF Df GVIF^(1/(2*Df))
@@ -6138,7 +6138,7 @@ summary(model8)</code></pre>
 ## Multiple R-squared:  0.478,  Adjusted R-squared:  0.477 
 ## F-statistic:  515 on 20 and 11272 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model8) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-11-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-11-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model8)</code></pre>
 <pre><code>##                          GVIF Df GVIF^(1/(2*Df))
@@ -6245,7 +6245,7 @@ summary(model9)</code></pre>
 ## Multiple R-squared:  0.419,  Adjusted R-squared:  0.419 
 ## F-statistic: 1.63e+03 on 5 and 11336 DF,  p-value: &lt;2e-16</code></pre>
 <pre class="r"><code>autoplot(model9) + theme_bw()</code></pre>
-<p><img src="/projects/airbnb_mexico_city/Airbnb2_files/figure-html/unnamed-chunk-12-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><img src="/projects/airbnb_mexico_city/airbnb2_files/figure-html/unnamed-chunk-12-1.png" width="648" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Check for collinearity
 vif(model9)</code></pre>
 <pre><code>##                      GVIF Df GVIF^(1/(2*Df))
