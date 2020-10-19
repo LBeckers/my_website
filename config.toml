@@ -107,7 +107,7 @@ disqusShortname = ""
       title = "AirBnB in Mexico City"
       subtitle = "Looking at what drives AirBnB prices in Mexico's Capital"
       image = "Mexico_AirBnB.jpg"
-      url = "projects/airbnb_mexico_city/DataAnalysisvF"
+      url = "projects/airbnb_mexico_city/Airbnb2"
 
     [[params.tiles.showcase]]
       title = "Climate Change"
