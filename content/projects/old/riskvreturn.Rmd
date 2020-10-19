@@ -7,8 +7,8 @@ description: "Investigating the returns of stock across DJIA"
 draft: false
 image: risk_vs_return.jpeg
 keywords: ""
-slug: riskvreturn
-title: Financial Returns across DJIA
+slug: riskvreturn2
+title: Financial Returns across DJIA2
 ---
 
 
