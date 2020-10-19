@@ -7,3 +7,5 @@ title: My CV
 ---
 
 Check out my CV...
+
+[download ](CV/LLB_CV_20_21.pdf)
